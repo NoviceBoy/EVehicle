@@ -3,8 +3,16 @@ from eventSender import RequestSender
 
 def handleAddCommand( client, user, text=None ):
     print "Recieved Add Command"
-    requestSender.addToQueue( str( user ) )
-    client.sendMessage( user, "Successfully added to queue" )
+    stationForUser = requestSender.findStationForUser( user )
+    userInQueue = requestSender.findUserInQueue( user )
+    if not stationForUser and not userInQueue :
+        requestSender.addToQueue( str( user ) )
+        client.sendMessage( user, "Successfully added" )
+    else:
+        if userInQueue:
+            client.sendMessage( user, "You are already in the queue" )
+        else:
+            client.sendMessage( user, "You are already using station %d" % stationForUser )
 
 def handleTimeCommand( client, user, text=None ):
     print "Recieved Time Command"
@@ -19,9 +27,13 @@ def handleDeleteCommand( client, user, text=None ):
     client.sendMessage( user, "Deleted from queue" )
 
 def handleStationFreeCommand( client, user, text=None ):
-    match = re.match( "free station (\d+)", text )
-    requestSender.freeStation( int( match.group(1) ) )
-    client.sendMessage( user, "Station is free" )
+    match = re.match( "ev free (\d+)", text )
+    stationForUser = requestSender.findStationForUser( user )
+    if stationForUser:
+        requestSender.freeStation( int(stationForUser) )
+        client.sendMessage( user, "Station %d Free-ed up" % stationForUser )        
+    else:
+        client.sendMessage( user, "You are not using any stations" )
 
 commands = {
     # A dictionary based on Regexs and methods
@@ -29,7 +41,7 @@ commands = {
     "time" : handleTimeCommand,
     "ev suspend" : handleSuspendCommand,
     "ev delete" : handleDeleteCommand,
-    "free station (\d+)" : handleStationFreeCommand,
+    "ev free" : handleStationFreeCommand,
 
 }
 class AdminBot:

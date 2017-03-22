@@ -1,6 +1,12 @@
 import requests, time, random
+from pymongo import MongoClient
 
 class RequestSender:
+   def __init__( self ):
+      self.client = MongoClient( "localhost" )
+      self.stationTable = self.client.test.stations
+      self.queue = self.client.test.queue
+
    def addToQueue( self, user ):
       data = { "licensePlate" : "6XDS849", "name" : user }
       r = requests.post( "http://localhost:9999/", data )
@@ -10,7 +16,18 @@ class RequestSender:
       data = { "stationId" : station , "eventId" : 1 }
       r = requests.post( "http://localhost:9999/handleStationEvent", data )
       print r.status_code, r.reason
-   
+
+   def findStationForUser( self, user ):
+      record = { "user" : str( user ) }
+      if self.stationTable.find( record ).count() > 0:
+         return self.stationTable.find_one( record )[ 'id' ]
+      else:
+         return 0
+
+   def findUserInQueue( self, user ):
+      record = { "name" : "evqueue" }
+      return user in self.queue.find_one( record )[ "users" ]
+
 if __name__ == "__main__":
    requestSender = RequestSender()
    while 1:
