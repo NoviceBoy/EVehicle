@@ -18,15 +18,15 @@ class RequestSender:
       print r.status_code, r.reason
 
    def findStationForUser( self, user ):
-      record = { "user" : str( user ) }
+      record = { "user.name" : user }
       if self.stationTable.find( record ).count() > 0:
          return self.stationTable.find_one( record )[ 'id' ]
       else:
          return 0
 
    def findUserInQueue( self, user ):
-      record = { "name" : "evqueue" }
-      return user in self.queue.find_one( record )[ "users" ]
+      record = { "name" : user }
+      return self.queue.find( record ).count()
 
 if __name__ == "__main__":
    requestSender = RequestSender()

@@ -1,13 +1,22 @@
 import xmpp, time, re
 from eventSender import RequestSender
 
+def userName( user ):
+    return str( user ).split( "@" )[ 0 ]
+
 def handleAddCommand( client, user, text=None ):
     print "Recieved Add Command"
-    stationForUser = requestSender.findStationForUser( user )
-    userInQueue = requestSender.findUserInQueue( user )
+    userId = userName( user ) 
+    stationForUser = requestSender.findStationForUser( userId )
+    userInQueue = requestSender.findUserInQueue( userId )
     if not stationForUser and not userInQueue :
-        requestSender.addToQueue( str( user ) )
-        client.sendMessage( user, "Successfully added" )
+        requestSender.addToQueue( userId  )
+        stationForUser = requestSender.findStationForUser( userId )
+        if stationForUser:
+            client.sendMessage( user, "Station free, Assigned to use station: %d " % stationForUser )
+        else:
+            client.sendMessage( user, "Successfully added to Queue" )
+
     else:
         if userInQueue:
             client.sendMessage( user, "You are already in the queue" )
@@ -27,7 +36,7 @@ def handleDeleteCommand( client, user, text=None ):
     client.sendMessage( user, "Deleted from queue" )
 
 def handleStationFreeCommand( client, user, text=None ):
-    match = re.match( "ev free (\d+)", text )
+    match = re.match( "ev free", text )
     stationForUser = requestSender.findStationForUser( user )
     if stationForUser:
         requestSender.freeStation( int(stationForUser) )
@@ -49,7 +58,7 @@ class AdminBot:
     client = None 
 
     def __init__( self, username, password, host='talk.google.com', port=5223 ):  
-        self.client = xmpp.Client('gmail.com', debug=[])
+        self.client = xmpp.Client('gmail.com', debug=[] )
         self.client.connect(server=( host , port ))
         self.client.auth( username, password, 'Charge Bot')
         self.registerHandlers()
@@ -93,7 +102,7 @@ class AdminBot:
 
 
 if __name__ == "__main__":
-    bot = AdminBot( "evchargepoint", "" )
+    bot = AdminBot( "evchargepoint", "charge@arista301" )
     requestSender = RequestSender()
     bot.start()
 

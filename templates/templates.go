@@ -167,8 +167,8 @@ const DashBoardPage = refreshHeader + `
             {{ range .Stations }}
             <tr>
               <td>{{.Id}}</td>
-              {{ if .User }}
-              <td>{{.User}}</td>
+              {{ if .User.Name }}
+              <td>{{.User.Name }}</td>
               {{ else }}
               <td><div class="btn btn-success"> FREE </div></td>
               {{ end }}
@@ -183,12 +183,14 @@ const DashBoardPage = refreshHeader + `
           <thead>
               <tr>
                   <th>Queue</th>
+                  <th>Status</th>
               </tr>
           </thead>
           <tbody>
             {{ range .Queue }}
             <tr>
-              <td>{{.}}</td>
+              <td>{{.Name }}</td>
+              <td>{{.Status }}</td>
             </tr>
             {{ end }}
           </tbody>

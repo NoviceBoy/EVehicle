@@ -5,7 +5,8 @@ import (
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"os"
-    "strings"
+	"time"
+    	"strings"
 )
 
 func openDB( coll string )( m *mgo.Session, c *mgo.Collection ){
@@ -26,16 +27,18 @@ type Person struct {
 
 type Common struct{
     Id int
-    User string
+    User QueueObj
 }
 
-type Queue struct{
+type QueueObj struct{
     Name string
-    Users []string 
+    Tstamp int64 `bson:"tstamp"`
+    Status string `bson:"status"`
 }
+
 type Dashboard struct {
     Stations []Common
-    Queue []string
+    Queue []QueueObj
 }
 
 func GetUser( r string ) ( s Person ){
@@ -75,10 +78,8 @@ func GetDashBoard() ( d Dashboard , r int ){
     collection.Find(bson.M{"_id": bson.M{"$exists": 1}}).All(&results.Stations )
     sess, collection = openDB( "queue" )
     defer sess.Close()
-    queue := Queue{}
-    collection.Find(bson.M{"name": "evqueue" }).One(&queue)
+    collection.Find(bson.M{"_id": bson.M{"$exists": 1}}).Sort( "tstamp" ).All(&results.Queue )
     //fmt.Printf( "%s" , queue.Users )
-    results.Queue = queue.Users 
     return results, 1
 }
 
@@ -89,12 +90,14 @@ func AddToQueue( name string ){
     cStations.Find(bson.M{"user": "" }).One(&station)
     if station.Id != 0 {
         fmt.Println( "Free station, adding the user: ", name )
-        cStations.Update( bson.M{ "id" : station.Id }, bson.M{ "$set" : bson.M{ "user" : name }} )
+    	record := &QueueObj{ Name : name , Tstamp : time.Now().UnixNano() , Status : "Active" }
+        cStations.Update( bson.M{ "id" : station.Id }, bson.M{ "$set" : bson.M{ "user" : record }} )
     } else {
         fmt.Println( "No Free station, Adding  to Queue: ", name )
         sQueue, cQueue := openDB( "queue" )
         defer sQueue.Close()
-        cQueue.Update(bson.M{"name": "evqueue" }, bson.M{ "$push" : bson.M{ "users" : name  }})
+    	record := &QueueObj{ Name : name , Tstamp : time.Now().UnixNano() , Status : "Active" }
+        cQueue.Insert(record)
     }
 }
 
@@ -105,11 +108,11 @@ func HandleEventStation( stationId int , eventId int ){
     defer sQueue.Close()
     fmt.Println( "Freeing Station Id: ", stationId )
     cStations.Update(bson.M{ "id" : stationId }, bson.M{ "$set" : bson.M{ "user" : "" }} )
-    queue := Queue{}
-    cQueue.Find(bson.M{"name": "evqueue" }).One(&queue)
-    if len( queue.Users ) != 0 {
-        cQueue.Update(bson.M{"name": "evqueue" }, bson.M{ "$pop" : bson.M{ "users" : -1 }})
-        fmt.Println( "Free station, adding the user:", queue.Users[0] )
-        cStations.Update( bson.M{ "id" : stationId }, bson.M{ "$set" : bson.M{ "user" : queue.Users[0] }} )
+    queue := []QueueObj{}
+    cQueue.Find(bson.M{"status": "Active" }).Sort( "tstamp" ).All(&queue )
+    if len( queue ) != 0 {
+        fmt.Println( "Free station, adding the user:", queue[0] )
+        cStations.Update( bson.M{ "id" : stationId }, bson.M{ "$set" : bson.M{ "user" : queue[0] }} )
+	cQueue.Remove( bson.M{ "name" : queue[0].Name } )
     }
 }
