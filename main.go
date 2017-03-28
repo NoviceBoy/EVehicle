@@ -33,6 +33,11 @@ func handleStationEvent(w http.ResponseWriter, r *http.Request) {
         } 
 }
 
+func findFreeStation(w http.ResponseWriter, r *http.Request) {
+        errorTemplate.Execute(w, "Event received")
+        users.FindFreeStation() 
+}
+
 func showAllUsers(w http.ResponseWriter, r *http.Request) {
         results :=  users.GetAllUsers()
         if results != nil {
@@ -49,7 +54,8 @@ func dashBoard(w http.ResponseWriter, r *http.Request) {
         if r.FormValue("licensePlate") != ""{
                 result :=  users.GetUser( r.FormValue("licensePlate") ) 
                 if result.Email != "" {
-                        users.AddToQueue( r.FormValue("name") )    
+		   	timeStamp, _ := strconv.ParseInt( r.FormValue( "time" ), 10, 64 ) 
+                        users.AddToQueue( r.FormValue("name"), r.FormValue( "status" ), timeStamp )    
                 } else {
                         errorTemplate.Execute(w, "Sorry, License Plate hasnt been added to database yet. Please register the vehicle")
                         return 
@@ -103,6 +109,7 @@ func main() {
         http.HandleFunc("/notify", notify )
         http.HandleFunc("/showAllUsers", showAllUsers)
         http.HandleFunc("/handleStationEvent", handleStationEvent)
+        http.HandleFunc("/findFreeStation", findFreeStation )
 	err := http.ListenAndServe( ":9999", nil)
 	if err != nil {
 	        panic(err)

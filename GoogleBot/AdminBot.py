@@ -5,18 +5,17 @@ def userName( user ):
     return str( user ).split( "@" )[ 0 ]
 
 def handleAddCommand( client, user, text=None ):
-    print "Recieved Add Command"
+    print "Recieved Add Command :", user
     userId = userName( user ) 
     stationForUser = requestSender.findStationForUser( userId )
     userInQueue = requestSender.findUserInQueue( userId )
     if not stationForUser and not userInQueue :
-        requestSender.addToQueue( userId  )
+        requestSender.addToQueue( userId, status="Active"  )
         stationForUser = requestSender.findStationForUser( userId )
         if stationForUser:
             client.sendMessage( user, "Station free, Assigned to use station: %d " % stationForUser )
         else:
             client.sendMessage( user, "Successfully added to Queue" )
-
     else:
         if userInQueue:
             client.sendMessage( user, "You are already in the queue" )
@@ -24,34 +23,58 @@ def handleAddCommand( client, user, text=None ):
             client.sendMessage( user, "You are already using station %d" % stationForUser )
 
 def handleTimeCommand( client, user, text=None ):
-    print "Recieved Time Command"
+    print "Recieved Time Command :", user
     client.sendMessage( user, time.asctime() )
 
 def handleSuspendCommand( client, user, text=None ):
-    print "Recieved Suspend Command"
-    client.sendMessage( user, "Suspended, retaining position in queue" )
+    print "Recieved Suspend Command :", user
+    userId = userName( user ) 
+    stationForUser = requestSender.findStationForUser( userId )
+    userInQueue = requestSender.findUserInQueue( userId )
+    # Checking for 2 conditions, user can be using a station/ in queue
+    if stationForUser:
+        requestSender.addToQueue( userId, status="Suspended"  )
+        requestSender.freeStation( int(stationForUser) )
+        client.sendMessage( user, "Station %d released, Successfully added back to Queue" % stationForUser )
+    elif userInQueue:
+        requestSender.updateStatusForUserInQueue( userId, status="Suspended" )
+        client.sendMessage( user, "Status changed to suspended")
+    else:
+        client.sendMessage( user, "User not using any Stations or Queue, Add to Queue first" )
 
-def handleDeleteCommand( client, user, text=None ):
-    print "Recieved Delete Command"
-    client.sendMessage( user, "Deleted from queue" )
+def handleActivateCommand( client, user, text=None ):
+    print "Recieved activate Command :", user
+    userId = userName( user ) 
+    userInQueue = requestSender.findUserInQueue( userId )
+    if userInQueue:
+        requestSender.updateStatusForUserInQueue( userId, status="Active" )
+        client.sendMessage( user, "Status changed to active" )
+        requestSender.allocateFreeStation()
+    else:
+        client.sendMessage( user, "User not in Queue, Add to Queue first" )
 
 def handleStationFreeCommand( client, user, text=None ):
+    print "Recieved Free Command :", user
     match = re.match( "ev free", text )
-    stationForUser = requestSender.findStationForUser( user )
+    userId = userName( user ) 
+    stationForUser = requestSender.findStationForUser( userId )
+    userInQueue = requestSender.findUserInQueue( userId )
     if stationForUser:
         requestSender.freeStation( int(stationForUser) )
-        client.sendMessage( user, "Station %d Free-ed up" % stationForUser )        
+        client.sendMessage( user, "Station %d Free-ed up" % stationForUser )
+    elif userInQueue:
+        requestSender.removeUser( userId )
+        client.sendMessage( user, "Deleted user from the queue, use 'ev add' to add again" )        
     else:
-        client.sendMessage( user, "You are not using any stations" )
+        client.sendMessage( user, "User not using any Stations or Queue, Add to Queue first" )
 
 commands = {
     # A dictionary based on Regexs and methods
     "ev add" : handleAddCommand,
     "time" : handleTimeCommand,
     "ev suspend" : handleSuspendCommand,
-    "ev delete" : handleDeleteCommand,
+    "ev activate" : handleActivateCommand,
     "ev free" : handleStationFreeCommand,
-
 }
 class AdminBot:
     # Client for XMPP
@@ -102,7 +125,7 @@ class AdminBot:
 
 
 if __name__ == "__main__":
-    bot = AdminBot( "evchargepoint", "charge@arista301" )
+    bot = AdminBot( "evchargepoint", "" )
     requestSender = RequestSender()
     bot.start()
 

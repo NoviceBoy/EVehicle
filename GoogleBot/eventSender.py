@@ -7,8 +7,13 @@ class RequestSender:
       self.stationTable = self.client.test.stations
       self.queue = self.client.test.queue
 
-   def addToQueue( self, user ):
-      data = { "licensePlate" : "6XDS849", "name" : user }
+   def addToQueue( self, user, status="Active" ):
+      print status
+      if status == "Active":
+         data = { "licensePlate" : "6XDS849", "name" : user, "status" : status, "time": 0 }
+      elif status == "Suspended":
+         timeStamp = self.stationTable.find_one( { "user.name" : user } )[ 'user' ][ 'tstamp' ]
+         data = { "licensePlate" : "6XDS849", "name" : user, "status" : status, "time": timeStamp }
       r = requests.post( "http://localhost:9999/", data )
       print r.status_code, r.reason
       
@@ -24,9 +29,23 @@ class RequestSender:
       else:
          return 0
 
+   def allocateFreeStation( self ):
+      data = {}
+      r = requests.post( "http://localhost:9999/findFreeStation", data )
+      print r.status_code, r.reason
+
    def findUserInQueue( self, user ):
       record = { "name" : user }
       return self.queue.find( record ).count()
+
+   def removeUser( self, user ):
+      record = { "name" : user }
+      return self.queue.remove( record )
+
+   def updateStatusForUserInQueue( self, user, status ):
+      record = { "name" : user }
+      result = self.queue.update_one( record, { "$set": { "status" : status } } )
+      return result.matched_count
 
 if __name__ == "__main__":
    requestSender = RequestSender()
@@ -39,7 +58,7 @@ if __name__ == "__main__":
          requestSender.freeStation( stationId )
       elif event == 2:
          name = raw_input( "Enter Name to add to queue: " )
-         requestSender.addToQueue( name )
+         requestSender.addToQueue( name, status="Active" )
       else:
          print "Please enter a valid event"
    

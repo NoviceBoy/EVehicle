@@ -195,7 +195,10 @@ const DashBoardPage = refreshHeader + `
             {{ end }}
           </tbody>
       </table> 
-      <button type="button" class="btn btn-success" data-toggle="modal" data-target="#user">Add to Queue</button>
+      </div>
+  ` + footer
+
+const modelButton = `<button type="button" class="btn btn-success" data-toggle="modal" data-target="#user">Add to Queue</button>
         <div class="modal fade" id="user" role="dialog">
           <div class="modal-dialog">
             <div class="modal-content">
@@ -225,6 +228,4 @@ const DashBoardPage = refreshHeader + `
               </div>
             </div>  
           </div>
-        </div>
-      </div>
-  ` + footer
+        </div>`

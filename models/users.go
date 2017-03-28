@@ -83,22 +83,29 @@ func GetDashBoard() ( d Dashboard , r int ){
     return results, 1
 }
 
-func AddToQueue( name string ){
+func FindFreeStation(){
     sStation, cStations := openDB( "stations" )
     defer sStation.Close()
     station := Common{}
     cStations.Find(bson.M{"user": "" }).One(&station)
     if station.Id != 0 {
-        fmt.Println( "Free station, adding the user: ", name )
-    	record := &QueueObj{ Name : name , Tstamp : time.Now().UnixNano() , Status : "Active" }
-        cStations.Update( bson.M{ "id" : station.Id }, bson.M{ "$set" : bson.M{ "user" : record }} )
-    } else {
-        fmt.Println( "No Free station, Adding  to Queue: ", name )
-        sQueue, cQueue := openDB( "queue" )
-        defer sQueue.Close()
-    	record := &QueueObj{ Name : name , Tstamp : time.Now().UnixNano() , Status : "Active" }
-        cQueue.Insert(record)
+        fmt.Println( "Free station, calling station free event" )
+	// raising event 1 for now, change it later on
+	HandleEventStation( station.Id, 1 )
     }
+}
+
+func AddToQueue( name string, status string, timeStamp int64 ){
+    fmt.Println( "Adding  to Queue: " + name + " Status: " + status )
+    sQueue, cQueue := openDB( "queue" )
+    defer sQueue.Close()
+    record := &QueueObj{ Name : name , Tstamp : time.Now().UnixNano() , Status : status }
+    if status == "Suspended" {
+       record.Tstamp = timeStamp
+    }
+    cQueue.Insert(record)
+    // calling free stations
+    FindFreeStation()
 }
 
 func HandleEventStation( stationId int , eventId int ){
