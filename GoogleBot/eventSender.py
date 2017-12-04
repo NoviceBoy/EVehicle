@@ -6,6 +6,8 @@ class RequestSender:
       self.client = MongoClient( "localhost" )
       self.stationTable = self.client.test.stations
       self.queue = self.client.test.queue
+      self.chat = self.client.test.chat
+      self.user = self.client.test.user
 
    def addToQueue( self, user, status="Active" ):
       print status
@@ -46,6 +48,23 @@ class RequestSender:
       record = { "name" : user }
       result = self.queue.update_one( record, { "$set": { "status" : status } } )
       return result.matched_count
+
+   def findUsername( self, user ):
+      record = { "username" : user }
+      if self.chat.find( record ).count() > 0:
+         return self.chat.find_one( record )[ 'name' ]
+      else:
+         return 0
+
+   def addUserName( self, user, licensePlate ):
+      record = { "username" : user }
+      if self.chat.find( record ).count():
+         return 1
+      record = { "licensePlate" : licensePlate  }
+      name = self.user.find_one( record )[ 'name' ]
+      record = { "username" : user, "name" : name }
+      self.chat.insert( record )
+      return 0
 
 if __name__ == "__main__":
    requestSender = RequestSender()

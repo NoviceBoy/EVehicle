@@ -2,11 +2,14 @@ import xmpp, time, re
 from eventSender import RequestSender
 
 def userName( user ):
-    return str( user ).split( "@" )[ 0 ]
+    return requestSender.findUsername( str( user ).split( "@" )[ 0 ] )
 
 def handleAddCommand( client, user, text=None ):
     print "Recieved Add Command :", user
     userId = userName( user ) 
+    if not userId:
+        client.sendMessage( user, "User not registered yet, please use ev register <licensePlate>" )
+        return
     stationForUser = requestSender.findStationForUser( userId )
     userInQueue = requestSender.findUserInQueue( userId )
     if not stationForUser and not userInQueue :
@@ -29,6 +32,9 @@ def handleTimeCommand( client, user, text=None ):
 def handleSuspendCommand( client, user, text=None ):
     print "Recieved Suspend Command :", user
     userId = userName( user ) 
+    if not userId:
+        client.sendMessage( user, "User not registered yet, please use ev register <licensePlate>" )
+        return
     stationForUser = requestSender.findStationForUser( userId )
     userInQueue = requestSender.findUserInQueue( userId )
     # Checking for 2 conditions, user can be using a station/ in queue
@@ -45,18 +51,40 @@ def handleSuspendCommand( client, user, text=None ):
 def handleActivateCommand( client, user, text=None ):
     print "Recieved activate Command :", user
     userId = userName( user ) 
+    if not userId:
+        client.sendMessage( user, "User not registered yet, please use ev register <licensePlate>" )
+        return
     userInQueue = requestSender.findUserInQueue( userId )
     if userInQueue:
         requestSender.updateStatusForUserInQueue( userId, status="Active" )
         client.sendMessage( user, "Status changed to active" )
         requestSender.allocateFreeStation()
+        stationForUser = requestSender.findStationForUser( userId )
+        if stationForUser:
+            client.sendMessage( user, "Station free, Assigned to use station: %d " % stationForUser )
     else:
         client.sendMessage( user, "User not in Queue, Add to Queue first" )
+
+def handleRegisterCommand( client, user, text=None ):
+    print "Recieved register Command :", user
+    if len( text.split( " " ) ) != 3:
+        client.sendMessage( user, "Invalid command usage. Use ev register <licensePlate>" )
+        return
+    licensePlate = text.split(" ")[ 2 ]
+    username = str( user ).split( "@" )[ 0 ]
+    status = requestSender.addUserName( username, licensePlate.upper() )
+    if status:
+        client.sendMessage( user, "User already registered, please start using the dashboard" )
+    else:
+        client.sendMessage( user, "User registered, please start using the dashboard" )
 
 def handleStationFreeCommand( client, user, text=None ):
     print "Recieved Free Command :", user
     match = re.match( "ev free", text )
     userId = userName( user ) 
+    if not userId:
+        client.sendMessage( user, "User not registered yet, please use ev register <licensePlate>" )
+        return
     stationForUser = requestSender.findStationForUser( userId )
     userInQueue = requestSender.findUserInQueue( userId )
     if stationForUser:
@@ -75,6 +103,7 @@ commands = {
     "ev suspend" : handleSuspendCommand,
     "ev activate" : handleActivateCommand,
     "ev free" : handleStationFreeCommand,
+    "ev register" : handleRegisterCommand,
 }
 class AdminBot:
     # Client for XMPP
